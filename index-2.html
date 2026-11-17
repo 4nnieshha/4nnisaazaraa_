@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FloraTrack</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🪴</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --primary:#F2ACC9; --primary-light:#FCE6EF; --primary-dark:#B4527A;
+    --cream:#FBF4F5; --cream-warm:#FDF3F1; --cream-deep:#F5E1E6;
+    --peach:#FFD9A8; --peach-dark:#E8934F;
+    --yellow:#FBE7A8;
+    --success:#7FAD79; --success-light:#DCEEDA; --success-dark:#466B49;
+    --error:#E8748C; --error-light:#FBDCE2; --error-dark:#A83A56;
+    --text-dark:#4A2F3B; --text-mid:#93727D; --white:#FFFFFF;
+    --shadow:0 6px 20px rgba(180,70,110,.12);
+    --shadow-lg:0 24px 60px rgba(150,50,90,.22);
+    --blob:63% 37% 54% 46% / 43% 65% 35% 57%;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    font-family:'Quicksand',sans-serif;
+    background:linear-gradient(160deg,#F3DCE4,#EACCD8);
+    min-height:100vh; display:flex; align-items:center; justify-content:center;
+    color:var(--text-dark);
+  }
+  h1,h2,h3,h4{font-family:'Baloo 2',sans-serif; font-weight:700;}
+  button{font-family:inherit; border:none; background:none; cursor:pointer;}
+  ul,ol{list-style:none;}
+  a{text-decoration:none; color:inherit;}
+  input{font-family:inherit;}
+  button:focus-visible, input:focus-visible, a:focus-visible{outline:2px solid var(--primary-dark); outline-offset:2px;}
+
+  /* ---------- APP SHELL ---------- */
+  .app-shell{
+    width:100%; max-width:430px; height:100vh;
+    background:linear-gradient(180deg,var(--cream),var(--cream-warm));
+    display:flex; flex-direction:column; overflow:hidden; position:relative;
+  }
+  @media (min-width:520px){
+    body{padding:24px;}
+    .app-shell{height:min(880px,94vh); border-radius:44px; box-shadow:var(--shadow-lg); border:10px solid #fff;}
+  }
+  .status-bar{display:flex; justify-content:space-between; padding:12px 26px 2px; font-size:12px; font-weight:700; color:var(--text-dark); flex-shrink:0; letter-spacing:.3px;}
+  #screen-container{flex:1; overflow-y:auto; position:relative; scrollbar-width:none;}
+  #screen-container::-webkit-scrollbar{display:none;}
+  .screen{display:none; flex-direction:column; min-height:100%;}
+  .screen.active{display:flex; animation:fadeIn .35s ease;}
+  #screen-splash.active, #screen-game-result.active{justify-content:center; align-items:center; text-align:center;}
+  @keyframes fadeIn{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:none;}}
+  @keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-6px);}75%{transform:translateX(6px);}}
+  @keyframes floaty{0%,100%{transform:translateY(0);}50%{transform:translateY(-10px);}}
+  @keyframes sproutBob{from{transform:translateY(-50%) scale(.9);}to{transform:translateY(-50%) scale(1.12);}}
+  @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important;}}
+
+  /* ---------- SPLASH ---------- */
+  .splash-content{padding:0 34px;}
+  .splash-logo{font-size:74px; animation:floaty 2.6s ease-in-out infinite; display:inline-block;}
+  .splash-title{font-size:25px; color:var(--primary-dark); margin:16px 0 6px;}
+  .splash-subtitle{font-size:13px; color:var(--text-mid); margin-bottom:30px;}
+  .splash-grow-track{width:190px; height:10px; background:#F5DEE7; border-radius:999px; margin:0 auto 14px; position:relative;}
+  .splash-grow-fill{width:0%; height:100%; background:linear-gradient(90deg,var(--primary-light),var(--primary)); border-radius:999px; position:relative; transition:width .1s linear;}
+  .splash-sprout{position:absolute; right:-9px; top:50%; transform:translateY(-50%); font-size:17px; animation:sproutBob .6s ease-in-out infinite alternate;}
+  .splash-loading-text{font-size:11.5px; color:var(--text-mid);}
+
+  /* ---------- TOPBAR / BUTTONS ---------- */
+  .topbar{display:flex; align-items:center; gap:12px; padding:16px 20px 6px; flex-shrink:0;}
+  .topbar h2{font-size:18px; flex:1;}
+  .btn-back{background:#fff; width:36px; height:36px; border-radius:14px; box-shadow:var(--shadow); font-size:16px; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+  .btn-fav{font-size:20px; flex-shrink:0;}
+  .btn-primary{background:linear-gradient(135deg,var(--primary),var(--primary-dark)); color:#fff; padding:14px 20px; border-radius:999px; font-weight:700; font-size:14.5px; box-shadow:0 8px 18px rgba(70,107,73,.28); width:100%; transition:transform .12s;}
+  .btn-primary:active{transform:scale(.97);}
+  .btn-secondary{background:#fff; color:var(--primary-dark); border:2px solid var(--primary-light); padding:12px 20px; border-radius:999px; font-weight:700; font-size:13.5px; width:100%; margin-top:10px;}
+
+  /* ---------- HOME ---------- */
+  .home-header{display:flex; justify-content:space-between; align-items:center; padding:16px 20px 12px;}
+  .greeting-small{font-size:12px; color:var(--text-mid); margin-bottom:2px;}
+  .greeting-title{font-size:18px; max-width:230px; line-height:1.3;}
+  .home-avatar{width:44px; height:44px; border-radius:16px; background:var(--primary-light); display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0;}
+  .search-bar{display:flex; align-items:center; gap:10px; background:#fff; margin:0 20px; padding:12px 16px; border-radius:16px; box-shadow:var(--shadow);}
+  .search-bar input{border:none; outline:none; flex:1; font-size:13.5px; background:transparent; color:var(--text-dark);}
+  .tip-card{display:flex; gap:12px; background:var(--yellow); margin:14px 20px 6px; padding:13px 15px; border-radius:18px; align-items:flex-start;}
+  .tip-icon{font-size:21px;}
+  .tip-label{font-size:10.5px; font-weight:700; color:#8A6D1D; text-transform:uppercase; letter-spacing:.5px; margin-bottom:2px;}
+  #tip-of-day-text{font-size:12.5px; line-height:1.45;}
+  .section-title{padding:18px 20px 10px; font-size:15.5px;}
+  .category-chips{display:flex; gap:9px; overflow-x:auto; padding:0 20px 4px;}
+  .category-chip{flex-shrink:0; background:#fff; border:2px solid #F5E1E7; padding:9px 15px; border-radius:999px; font-size:12.5px; font-weight:600; color:var(--text-mid); white-space:nowrap;}
+  .category-chip.active{background:var(--primary); border-color:var(--primary); color:#fff;}
+  .plant-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px; padding:6px 20px 6px;}
+  .empty-state{grid-column:1/-1; text-align:center; color:var(--text-mid); font-size:13px; padding:28px 10px;}
+  .plant-card{background:#fff; border-radius:20px; overflow:hidden; box-shadow:var(--shadow); transition:transform .12s;}
+  .plant-card:active{transform:scale(.97);}
+  .plant-card-image{height:96px; display:flex; align-items:center; justify-content:center;}
+  .plant-card-image.cat-hias{background:linear-gradient(135deg,#E4F2E2,#CFE9CC);}
+  .plant-card-image.cat-sayur{background:linear-gradient(135deg,#FBF2CE,#F3E2A4);}
+  .plant-card-image.cat-buah{background:linear-gradient(135deg,#FDE3D3,#FACBA6);}
+  .plant-card-image.cat-herbal{background:linear-gradient(135deg,#D9F0EB,#B9E1D8);}
+  .plant-blob{width:58px; height:58px; display:flex; align-items:center; justify-content:center; font-size:28px; background:rgba(255,255,255,.65); border-radius:var(--blob);}
+  .plant-card-body{padding:11px 12px 13px;}
+  .plant-card-body h4{font-size:13.5px; margin-bottom:2px; font-family:'Quicksand',sans-serif; font-weight:700;}
+  .plant-card-cat{font-size:10.5px; color:var(--text-mid); margin-bottom:6px;}
+  .diff-dots{display:inline-flex; gap:3px; vertical-align:middle;}
+  .diff-dot{width:6px; height:6px; border-radius:50%; background:#F0DEE4; display:inline-block;}
+  .diff-dot.filled{background:var(--peach-dark);}
+  .diff-label{font-size:9.5px; color:var(--text-mid); margin-left:4px;}
+  .home-footer{text-align:center; padding:22px 20px 10px; color:var(--text-mid); font-size:11px;}
+  .footer-links{display:flex; justify-content:center; gap:18px; margin-top:9px;}
+  .footer-links a{color:var(--text-mid); display:inline-flex;}
+
+  /* ---------- DETAIL ---------- */
+  .detail-hero{text-align:center; padding:10px 20px 14px;}
+  .detail-hero-blob{width:104px; height:104px; background:linear-gradient(135deg,var(--primary-light),var(--primary)); display:flex; align-items:center; justify-content:center; font-size:48px; margin:0 auto 12px; border-radius:var(--blob);}
+  .detail-hero h2{font-size:19px; margin-bottom:2px;}
+  .detail-latin{font-size:11.5px; font-style:italic; color:var(--text-mid); margin-bottom:10px;}
+  .detail-badges{display:flex; gap:10px; justify-content:center; align-items:center;}
+  .badge{background:var(--primary-light); color:var(--primary-dark); font-size:10.5px; font-weight:700; padding:5px 12px; border-radius:999px;}
+  .quick-info-row{display:flex; gap:10px; padding:0 20px 16px;}
+  .quick-info-chip{flex:1; background:#fff; border-radius:14px; padding:10px 6px; text-align:center; box-shadow:var(--shadow); font-size:11px; color:var(--text-dark); font-weight:700;}
+  .qi-emoji{font-size:17px; margin-bottom:4px;}
+  .detail-tabs{display:flex; gap:8px; padding:0 20px 4px;}
+  .detail-tab{flex:1; background:#fff; border:2px solid #F5E1E7; padding:10px 4px; border-radius:14px; font-size:12px; font-weight:700; color:var(--text-mid);}
+  .detail-tab.active{background:var(--primary); border-color:var(--primary); color:#fff;}
+  .detail-content{display:none; padding:6px 20px 26px;}
+  .detail-content.active{display:block; animation:fadeIn .3s ease;}
+  .detail-content h4{font-size:13.5px; margin:16px 0 8px; color:var(--primary-dark); font-family:'Quicksand',sans-serif; font-weight:700;}
+  .detail-content h4:first-child{margin-top:2px;}
+  .detail-content p{font-size:13px; line-height:1.65;}
+  .detail-content ul li{font-size:12.5px; line-height:1.55; padding-left:20px; position:relative; margin-bottom:7px;}
+  .detail-content ul li::before{content:'🌿'; position:absolute; left:0; font-size:10px; top:2px;}
+  .step-list{padding:0;}
+  .step-list li{display:flex; gap:10px; margin-bottom:13px; font-size:12.5px; line-height:1.55;}
+  .step-num{background:var(--primary); color:#fff; width:21px; height:21px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10.5px; font-weight:700; flex-shrink:0;}
+  .step-text{flex:1; padding-top:1px;}
+  .btn-cta{margin-top:18px;}
+
+  /* ---------- TOAST ---------- */
+  .toast{position:absolute; bottom:90px; left:50%; transform:translateX(-50%) translateY(20px); background:var(--primary-dark); color:#fff; padding:12px 20px; border-radius:999px; font-weight:700; font-size:13px; opacity:0; pointer-events:none; transition:all .3s ease; box-shadow:var(--shadow-lg); z-index:50; white-space:nowrap; max-width:90%; overflow:hidden; text-overflow:ellipsis;}
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+  /* ---------- GAME HUB ---------- */
+  .stats-row{display:flex; gap:10px; padding:4px 20px 16px;}
+  .stat-chip{background:#fff; box-shadow:var(--shadow); padding:8px 15px; border-radius:999px; font-size:11.5px; font-weight:700; flex:1; text-align:center;}
+  .game-card{display:flex; align-items:center; gap:14px; background:#fff; border-radius:20px; padding:16px; margin:0 20px 14px; box-shadow:var(--shadow); transition:transform .12s; text-align:left;}
+  .game-card:active{transform:scale(.97);}
+  .game-icon{font-size:30px; width:54px; height:54px; background:var(--primary-light); border-radius:16px; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+  .game-card h3{font-size:14.5px; margin-bottom:3px; font-family:'Quicksand',sans-serif; font-weight:700;}
+  .game-card p{font-size:11.5px; color:var(--text-mid);}
+
+  /* ---------- QUIZ ---------- */
+  .quiz-progress{height:8px; background:#F7E4EA; border-radius:999px; margin:8px 20px 6px; overflow:hidden;}
+  .quiz-progress-fill{height:100%; background:var(--primary); border-radius:999px; transition:width .3s ease;}
+  .quiz-counter{padding:0 20px; font-size:11.5px; color:var(--text-mid); font-weight:700;}
+  .quiz-question-card{background:#fff; border-radius:20px; padding:20px; margin:14px 20px; box-shadow:var(--shadow); font-size:15.5px; font-weight:700; min-height:64px;}
+  .quiz-options{padding:0 20px;}
+  .quiz-option{display:block; width:100%; text-align:left; background:#fff; border:2px solid #F7E4EA; padding:13px 15px; border-radius:16px; margin-bottom:9px; font-size:13.5px; font-weight:600; transition:all .15s;}
+  .quiz-option:active{transform:scale(.98);}
+  .quiz-option.disabled{pointer-events:none;}
+  .quiz-option.correct{background:var(--success-light); border-color:var(--success); color:var(--success-dark);}
+  .quiz-option.incorrect{background:var(--error-light); border-color:var(--error); color:var(--error-dark);}
+  .quiz-feedback{margin:4px 20px 12px; padding:12px 15px; background:var(--yellow); border-radius:14px; font-size:12.5px; display:none; line-height:1.5;}
+  .quiz-feedback.show{display:block; animation:fadeIn .3s ease;}
+  #quiz-next-btn{margin:6px 20px 20px; width:calc(100% - 40px);}
+
+  /* ---------- RESULT (shared) ---------- */
+  .result-card{padding:32px 26px;}
+  .result-emoji{font-size:62px; margin-bottom:12px;}
+  .result-card h2{font-size:21px; margin-bottom:8px;}
+  .result-card p{color:var(--text-mid); font-size:13px; margin-bottom:16px;}
+  .result-score{display:inline-block; background:var(--peach); color:#8A4E1D; font-weight:700; padding:8px 22px; border-radius:999px; margin-bottom:26px; font-size:14px;}
+  .result-card .btn-primary, .result-card .btn-secondary{max-width:260px; margin-left:auto; margin-right:auto;}
+
+  /* ---------- ARRANGE ---------- */
+  .arrange-instruction{padding:0 20px 12px; font-size:13px; color:var(--text-mid); line-height:1.5;}
+  .arrange-sequence{min-height:64px; background:#fff; margin:0 20px 16px; border-radius:16px; padding:10px; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:8px;}
+  .arrange-sequence.shake{animation:shake .4s;}
+  .arrange-placeholder{color:var(--text-mid); font-size:12.5px; text-align:center; padding:14px 4px;}
+  .arrange-pool{padding:0 20px; display:flex; flex-direction:column; gap:8px; flex:1;}
+  .arrange-chip{background:var(--primary-light); padding:12px 14px; border-radius:14px; font-size:12.5px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:8px; text-align:left;}
+  .seq-chip{background:var(--cream-deep); border:2px solid var(--primary-light);}
+  .chip-num{background:var(--primary-dark); color:#fff; width:19px; height:19px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; flex-shrink:0;}
+  .arrange-actions{display:flex; gap:10px; padding:16px 20px 22px;}
+  .arrange-actions .btn-primary, .arrange-actions .btn-secondary{flex:1; width:auto; margin-top:0;}
+
+  /* ---------- MEMORY ---------- */
+  .memory-stats{display:flex; gap:16px; padding:6px 20px 10px; font-size:12.5px; color:var(--text-mid); font-weight:700;}
+  .memory-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:9px; padding:2px 20px 22px;}
+  .memory-card{aspect-ratio:1; perspective:600px; cursor:pointer;}
+  .memory-card-inner{position:relative; width:100%; height:100%; transform-style:preserve-3d; transition:transform .45s;}
+  .memory-card.flipped .memory-card-inner{transform:rotateY(180deg);}
+  .memory-card-front,.memory-card-back{position:absolute; inset:0; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:24px; backface-visibility:hidden;}
+  .memory-card-front{background:linear-gradient(135deg,var(--primary),var(--primary-dark)); color:#fff; font-size:18px;}
+  .memory-card-back{background:#fff; border:2px solid var(--primary-light); transform:rotateY(180deg);}
+  .memory-card.matched .memory-card-back{background:var(--peach); border-color:var(--peach-dark);}
+
+  /* ---------- ABOUT ---------- */
+  .about-hero{text-align:center; padding:22px 20px 14px;}
+  .about-logo{font-size:54px; margin-bottom:8px;}
+  .about-hero h2{font-size:18px; margin-bottom:4px;}
+  .about-version{font-size:11.5px; color:var(--text-mid);}
+  .about-desc{font-size:12.5px; line-height:1.6; padding:0 22px 16px; text-align:center; color:var(--text-dark);}
+  .about-stats{display:flex; justify-content:center; gap:12px; padding-bottom:20px;}
+  .about-links{padding:0 20px;}
+  .link-card{display:flex; align-items:center; gap:14px; background:#fff; border-radius:16px; padding:14px 16px; margin-bottom:10px; box-shadow:var(--shadow); transition:transform .12s;}
+  .link-card:active{transform:scale(.97);}
+  .link-card svg{flex-shrink:0; color:var(--primary-dark);}
+  .link-card strong{display:block; font-size:13.5px; font-family:'Quicksand',sans-serif;}
+  .link-card span{font-size:11px; color:var(--text-mid);}
+  .about-hint{font-size:11px; color:var(--text-mid); text-align:center; padding:4px 26px 20px; line-height:1.55;}
+  .about-footer{text-align:center; font-size:11px; color:var(--text-mid); padding-bottom:22px;}
+
+  /* ---------- BOTTOM NAV ---------- */
+  .bottom-nav{display:none; border-top:1px solid #F5E1E7; background:#fff; padding:8px 0 max(8px,env(safe-area-inset-bottom)); flex-shrink:0; align-items:center;}
+  .nav-item{flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; padding:6px 0; color:var(--text-mid);}
+  .nav-item.active{color:var(--primary-dark);}
+  .nav-icon{font-size:19px;}
+  .nav-label{font-size:9.5px; font-weight:700;}
+</style>
+</head>
+<body>
+<div class="app-shell">
+
+  <div class="status-bar">
+    <span id="status-time">9:41</span>
+    <span>●●●● 🔋</span>
+  </div>
+
+  <div id="screen-container">
+
+    <!-- SPLASH -->
+    <section class="screen active" id="screen-splash">
+      <div class="splash-content">
+        <span class="splash-logo">🪴</span>
+        <h1 class="splash-title">FloraTrack</h1>
+        <p class="splash-subtitle">Belajar &amp; Panduan Menanam untuk Pemula</p>
+        <div class="splash-grow-track">
+          <div class="splash-grow-fill" id="splash-progress-fill">
+            <span class="splash-sprout">🌱</span>
+          </div>
+        </div>
+        <p class="splash-loading-text">Menyiapkan taman kecilmu...</p>
+      </div>
+    </section>
+
+    <!-- HOME -->
+    <section class="screen" id="screen-home">
+      <div class="home-header">
+        <div>
+          <p class="greeting-small">Halo, Sobat Tanaman! 👋</p>
+          <h2 class="greeting-title">Yuk belajar merawat tumbuhan</h2>
+        </div>
+        <div class="home-avatar">🪴</div>
+      </div>
+      <div class="search-bar">
+        <span>🔍</span>
+        <input type="text" id="search-input" placeholder="Cari nama tanaman...">
+      </div>
+      <div class="tip-card">
+        <div class="tip-icon">💡</div>
+        <div>
+          <p class="tip-label">Tips Hari Ini</p>
+          <p id="tip-of-day-text">...</p>
+        </div>
+      </div>
+      <h3 class="section-title">Kategori</h3>
+      <div class="category-chips" id="category-chips"></div>
+      <h3 class="section-title">Tanaman untuk Dipelajari</h3>
+      <div class="plant-grid" id="plant-grid"></div>
+      <div class="home-footer">
+        <p>Dibuat dengan HTML, CSS &amp; JavaScript</p>
+        <div class="footer-links">
+          <a href="https://github.com/" target="_blank" rel="noopener" title="GitHub">
+            <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          </a>
+          <a href="https://vercel.com/" target="_blank" rel="noopener" title="Vercel">
+            <svg width="18" height="18" viewBox="0 0 256 222" fill="currentColor"><path d="M128 0L256 221.705H0L128 0Z"/></svg>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- DETAIL -->
+    <section class="screen" id="screen-detail">
+      <div class="topbar">
+        <button class="btn-back" onclick="showScreen('home')">←</button>
+        <h2>Detail Tanaman</h2>
+        <button class="btn-fav" id="btn-favorite" onclick="toggleFavorite(state.selectedPlantId)">🤍</button>
+      </div>
+      <div class="detail-hero">
+        <div class="detail-hero-blob"><span id="detail-emoji">🌿</span></div>
+        <h2 id="detail-name">-</h2>
+        <p class="detail-latin" id="detail-latin">-</p>
+        <div class="detail-badges">
+          <span class="badge" id="detail-category-badge">-</span>
+          <span id="detail-difficulty"></span>
+        </div>
+      </div>
+      <div class="quick-info-row">
+        <div class="quick-info-chip"><div class="qi-emoji">💧</div><span id="detail-water">-</span></div>
+        <div class="quick-info-chip"><div class="qi-emoji">🌤️</div><span id="detail-light">-</span></div>
+        <div class="quick-info-chip"><div class="qi-emoji">⏱️</div><span id="detail-duration">-</span></div>
+      </div>
+      <div class="detail-tabs">
+        <button class="detail-tab active" id="tab-bacaan" onclick="switchDetailTab('bacaan')">📖 Bacaan</button>
+        <button class="detail-tab" id="tab-panduan" onclick="switchDetailTab('panduan')">🌱 Panduan Menanam</button>
+      </div>
+      <div class="detail-content active" id="content-bacaan">
+        <h4>Tentang Tanaman Ini</h4>
+        <p id="bacaan-deskripsi"></p>
+        <h4>Ciri-ciri</h4>
+        <ul id="bacaan-ciri"></ul>
+        <h4>Manfaat</h4>
+        <ul id="bacaan-manfaat"></ul>
+        <button class="btn-primary btn-cta" onclick="switchDetailTab('panduan')">Lanjut ke Panduan Menanam →</button>
+      </div>
+      <div class="detail-content" id="content-panduan">
+        <h4>Persiapan</h4>
+        <ul id="panduan-persiapan"></ul>
+        <h4>Langkah Menanam</h4>
+        <ol class="step-list" id="panduan-langkah"></ol>
+        <h4>Tips Perawatan</h4>
+        <ul id="panduan-tips"></ul>
+      </div>
+    </section>
+
+    <!-- GAME HUB -->
+    <section class="screen" id="screen-game-hub">
+      <div class="topbar"><h2>🎮 Mode Permainan</h2></div>
+      <div class="stats-row">
+        <div class="stat-chip">⭐ Skor: <span class="stat-score-display">0</span></div>
+        <div class="stat-chip">📚 Dipelajari: <span class="stat-learned-display">0</span>/8</div>
+      </div>
+      <button class="game-card" onclick="startQuiz()">
+        <div class="game-icon">🧠</div>
+        <div><h3>Kuis Tanaman</h3><p>Uji pengetahuanmu setelah belajar!</p></div>
+      </button>
+      <button class="game-card" onclick="startArrange()">
+        <div class="game-icon">🔢</div>
+        <div><h3>Susun Langkah</h3><p>Urutkan langkah menanam yang tepat</p></div>
+      </button>
+      <button class="game-card" onclick="startMemory()">
+        <div class="game-icon">🧩</div>
+        <div><h3>Cocokkan Pasangan</h3><p>Temukan pasangan tanaman yang sama</p></div>
+      </button>
+    </section>
+
+    <!-- QUIZ -->
+    <section class="screen" id="screen-quiz">
+      <div class="topbar">
+        <button class="btn-back" onclick="showScreen('game-hub')">←</button>
+        <h2>Kuis Tanaman</h2>
+      </div>
+      <div class="quiz-progress"><div class="quiz-progress-fill" id="quiz-progress-fill"></div></div>
+      <p class="quiz-counter" id="quiz-counter">Soal 1/8</p>
+      <div class="quiz-question-card"><p id="quiz-question-text">...</p></div>
+      <div class="quiz-options" id="quiz-options"></div>
+      <div class="quiz-feedback" id="quiz-feedback"></div>
+      <button class="btn-primary" id="quiz-next-btn" onclick="nextQuizQuestion()" style="display:none;">Lanjut →</button>
+    </section>
+
+    <!-- ARRANGE -->
+    <section class="screen" id="screen-arrange">
+      <div class="topbar">
+        <button class="btn-back" onclick="showScreen('game-hub')">←</button>
+        <h2>Susun Langkah</h2>
+      </div>
+      <p class="arrange-instruction">Urutkan langkah menanam <strong id="arrange-plant-name">...</strong> dengan benar, ketuk langkah di bawah sesuai urutannya!</p>
+      <div class="arrange-sequence" id="arrange-sequence"></div>
+      <div class="arrange-pool" id="arrange-pool"></div>
+      <div class="arrange-actions">
+        <button class="btn-secondary" onclick="resetArrange()">Ulangi</button>
+        <button class="btn-primary" onclick="checkArrange()">Periksa Jawaban</button>
+      </div>
+    </section>
+
+    <!-- MEMORY -->
+    <section class="screen" id="screen-memory">
+      <div class="topbar">
+        <button class="btn-back" onclick="showScreen('game-hub')">←</button>
+        <h2>Cocokkan Pasangan</h2>
+      </div>
+      <div class="memory-stats">
+        <span>Langkah: <span id="memory-moves">0</span></span>
+        <span>Pasangan: <span id="memory-matches">0</span>/8</span>
+      </div>
+      <div class="memory-grid" id="memory-grid"></div>
+    </section>
+
+    <!-- SHARED GAME RESULT -->
+    <section class="screen" id="screen-game-result">
+      <div class="result-card">
+        <div class="result-emoji" id="result-emoji">🎉</div>
+        <h2 id="result-title">Kerja Bagus!</h2>
+        <p id="result-desc">...</p>
+        <div class="result-score" id="result-score-display">+0 Poin</div>
+        <button class="btn-primary" onclick="replayLastGame()">Main Lagi</button>
+        <button class="btn-secondary" onclick="showScreen('game-hub')">Kembali ke Menu</button>
+      </div>
+    </section>
+
+    <!-- ABOUT -->
+    <section class="screen" id="screen-about">
+      <div class="topbar"><h2>ℹ️ Tentang Aplikasi</h2></div>
+      <div class="about-hero">
+        <div class="about-logo">🪴</div>
+        <h2>FloraTrack</h2>
+        <p class="about-version">Versi 1.0.0</p>
+      </div>
+      <p class="about-desc">Aplikasi belajar sekaligus panduan menanam untuk pemula. Baca dulu, praktikkan cara menanamnya, lalu uji pemahamanmu lewat mode permainan!</p>
+      <div class="about-stats">
+        <div class="stat-chip">⭐ Skor: <span class="stat-score-display">0</span></div>
+        <div class="stat-chip">📚 Dipelajari: <span class="stat-learned-display">0</span>/8</div>
+      </div>
+      <div class="about-links">
+        <a class="link-card" href="https://github.com/" target="_blank" rel="noopener">
+          <svg width="24" height="24" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          <div><strong>Source Code</strong><span>Lihat repository di GitHub</span></div>
+        </a>
+        <a class="link-card" href="https://vercel.com/" target="_blank" rel="noopener">
+          <svg width="24" height="24" viewBox="0 0 256 222" fill="currentColor"><path d="M128 0L256 221.705H0L128 0Z"/></svg>
+          <div><strong>Live Demo</strong><span>Di-deploy dengan Vercel</span></div>
+        </a>
+      </div>
+      <p class="about-hint">💡 Ganti kedua tautan di atas dengan link GitHub &amp; Vercel proyekmu sendiri setelah kamu deploy.</p>
+      <p class="about-footer">Dibuat dengan 💖 menggunakan HTML, CSS &amp; JavaScript</p>
+    </section>
+
+  </div>
+
+  <nav class="bottom-nav" id="bottom-nav">
+    <button class="nav-item active" data-screen="home" onclick="showScreen('home')">
+      <span class="nav-icon">🏠</span><span class="nav-label">Beranda</span>
+    </button>
+    <button class="nav-item" data-screen="game-hub" onclick="showScreen('game-hub')">
+      <span class="nav-icon">🎮</span><span class="nav-label">Bermain</span>
+    </button>
+    <button class="nav-item" data-screen="about" onclick="showScreen('about')">
+      <span class="nav-icon">ℹ️</span><span class="nav-label">Tentang</span>
+    </button>
+  </nav>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+/* ============ DATA ============ */
+const categories = [
+  {id:'semua', label:'Semua', icon:'🌎'},
+  {id:'hias', label:'Tanaman Hias', icon:'🌿'},
+  {id:'sayur', label:'Sayuran', icon:'🥬'},
+  {id:'buah', label:'Buah', icon:'🍅'},
+  {id:'herbal', label:'Herbal', icon:'🌱'}
+];
+
+const plants = [
+  {
+    id:'lidah-mertua', name:'Lidah Mertua', latin:'Sansevieria trifasciata', category:'hias',
+    emoji:'🌿', difficulty:1, water:'1-2x/minggu', light:'Teduh - Terang', duration:'Tahunan',
+    bacaan:{
+      deskripsi:'Lidah Mertua adalah salah satu tanaman hias paling populer karena perawatannya sangat mudah dan dikenal ampuh menyaring udara di dalam ruangan. Tanaman ini sangat cocok untuk pemula yang baru mulai belajar merawat tumbuhan.',
+      ciri:['Daun tebal, keras, dan berdiri tegak ke atas','Motif belang hijau tua dan hijau muda pada permukaan daun','Bisa tumbuh hingga tinggi 50-100 cm','Tahan terhadap kondisi minim cahaya dan jarang disiram'],
+      manfaat:['Membantu menyaring polutan udara seperti formaldehida dan benzena','Melepaskan oksigen di malam hari sehingga baik diletakkan di kamar tidur','Sangat tahan banting dan cocok untuk pemula','Mempercantik ruangan dengan bentuk daunnya yang unik']
+    },
+    panduan:{
+      persiapan:['Pot dengan lubang drainase yang baik','Media tanam campuran tanah, sekam bakar, dan pasir (2:1:1)','Anakan atau potongan rimpang lidah mertua'],
+      langkah:['Isi pot dengan media tanam hingga 3/4 bagian','Tanam anakan atau rimpang tepat di tengah pot, padatkan tanah di sekitarnya','Siram secukupnya hingga media lembap, jangan sampai tergenang','Letakkan pot di tempat teduh selama beberapa hari agar akar beradaptasi','Setelah 1-2 minggu, pindahkan ke lokasi dengan cahaya terang tidak langsung'],
+      tips:['Siram hanya ketika media tanam sudah benar-benar kering','Hindari menyiram langsung ke tengah rumpun daun','Bersihkan debu di permukaan daun secara berkala agar fotosintesis optimal','Jangan terlalu sering memupuk, cukup 2-3 bulan sekali']
+    }
+  },
+  {
+    id:'kaktus-mini', name:'Kaktus Mini', latin:'Cactaceae sp.', category:'hias',
+    emoji:'🌵', difficulty:1, water:'2-3x/bulan', light:'Matahari langsung', duration:'Tahunan',
+    bacaan:{
+      deskripsi:'Kaktus adalah tanaman gurun yang mampu menyimpan cadangan air di batangnya sehingga sangat tahan terhadap kekeringan. Ukurannya yang mini membuatnya jadi favorit untuk mempercantik meja kerja atau rak buku.',
+      ciri:['Batang tebal berbentuk bulat atau silinder','Permukaan batang ditutupi duri-duri kecil','Pertumbuhan tergolong lambat','Mampu bertahan hidup tanpa disiram dalam waktu lama'],
+      manfaat:['Cocok sebagai dekorasi meja kerja atau meja belajar','Perawatan sangat minim, ideal untuk orang yang sibuk','Membantu menambah kelembapan udara di sekitar area kecil','Bentuknya yang unik menjadikan ruangan lebih estetik']
+    },
+    panduan:{
+      persiapan:['Pot kecil berlubang drainase','Media tanam khusus kaktus (campuran pasir, tanah, dan sekam)','Bibit kaktus mini'],
+      langkah:['Campurkan media tanam hingga bertekstur porous (mudah meloloskan air)','Masukkan media ke dalam pot hingga hampir penuh','Tanam bibit kaktus dengan hati-hati karena durinya tajam, gunakan sarung tangan atau kain','Padatkan sedikit media di sekitar pangkal batang','Letakkan di tempat yang terkena sinar matahari langsung minimal 4-6 jam sehari'],
+      tips:['Siram hanya saat media benar-benar kering total, sekitar 2-3 minggu sekali','Jangan biarkan air menggenang di pot karena akar mudah busuk','Putar pot sesekali agar kaktus tumbuh tegak merata','Kurangi frekuensi penyiraman saat musim hujan atau cuaca lembap']
+    }
+  },
+  {
+    id:'cabai-rawit', name:'Cabai Rawit', latin:'Capsicum frutescens', category:'sayur',
+    emoji:'🌶️', difficulty:2, water:'2x sehari', light:'Matahari penuh', duration:'75-90 hari',
+    bacaan:{
+      deskripsi:'Cabai rawit adalah tanaman rumahan yang populer karena hasil panennya bisa langsung digunakan untuk memasak sehari-hari. Tanaman ini bisa ditanam dari biji dan cukup mudah dibudidayakan di pekarangan rumah maupun pot.',
+      ciri:['Tumbuh sebagai perdu kecil setinggi 50-100 cm','Buah kecil memanjang, berubah warna dari hijau ke merah saat matang','Berbunga kecil berwarna putih sebelum berbuah','Bisa berbuah terus-menerus jika dirawat dengan baik'],
+      manfaat:['Sumber vitamin C dan capsaicin yang baik untuk metabolisme','Hasil panen bisa langsung dikonsumsi, menghemat pengeluaran dapur','Bisa ditanam di lahan sempit menggunakan pot atau polybag','Cocok untuk belajar siklus tanam dari biji hingga panen']
+    },
+    panduan:{
+      persiapan:['Biji cabai dari buah yang sudah matang sempurna','Media semai (campuran tanah dan kompos)','Polybag atau pot ukuran sedang untuk pindah tanam','Pupuk organik atau NPK'],
+      langkah:['Rendam biji cabai dalam air hangat selama 6-8 jam','Semai biji di media tanam, tutup tipis dengan tanah','Jaga kelembapan media hingga biji berkecambah (7-14 hari)','Setelah bibit memiliki 4-5 daun sejati, pindahkan ke pot yang lebih besar','Siram rutin pagi dan sore, letakkan di tempat dengan sinar matahari penuh'],
+      tips:['Beri pupuk tambahan setiap 2 minggu sekali agar tanaman subur','Pangkas tunas air agar pertumbuhan lebih fokus ke batang utama','Pasang ajir kecil jika tanaman mulai berbuah lebat agar tidak roboh','Panen saat buah sudah berwarna merah merata']
+    }
+  },
+  {
+    id:'bayam', name:'Bayam', latin:'Amaranthus sp.', category:'sayur',
+    emoji:'🥬', difficulty:1, water:'1x sehari', light:'Matahari penuh/sebagian', duration:'25-30 hari',
+    bacaan:{
+      deskripsi:'Bayam adalah sayuran hijau yang sangat cocok untuk pemula karena masa panennya singkat dan cara tanamnya sederhana, cukup disebar langsung tanpa perlu proses semai yang rumit.',
+      ciri:['Daun berbentuk oval berwarna hijau segar','Batang lunak dan mudah patah','Tumbuh cepat dan bisa dipanen dalam waktu kurang dari sebulan','Tersedia varietas bayam hijau dan bayam merah'],
+      manfaat:['Kaya zat besi dan baik untuk mencegah anemia','Waktu panen singkat sehingga cocok untuk belajar bercocok tanam','Bisa ditanam di lahan sempit atau pot','Bisa dipanen bertahap dengan memetik daun terluar']
+    },
+    panduan:{
+      persiapan:['Benih bayam','Media tanam gembur (campuran tanah dan kompos)','Pot, polybag, atau bedengan kecil'],
+      langkah:['Gemburkan media tanam terlebih dahulu','Taburkan benih bayam secara merata di permukaan media','Tutup tipis dengan tanah, jangan terlalu dalam','Siram dengan gerimis halus agar benih tidak hanyut','Jaga kelembapan media setiap hari hingga benih tumbuh'],
+      tips:['Tempatkan di lokasi yang mendapat sinar matahari cukup','Jarangkan bibit yang tumbuh terlalu rapat','Hindari penyiraman berlebihan yang bisa membuat akar busuk','Panen dengan mencabut seluruh tanaman atau memetik daun terluar saja']
+    }
+  },
+  {
+    id:'tomat', name:'Tomat', latin:'Solanum lycopersicum', category:'buah',
+    emoji:'🍅', difficulty:2, water:'1x sehari', light:'Matahari penuh', duration:'70-90 hari',
+    bacaan:{
+      deskripsi:'Tomat adalah tanaman buah yang kaya akan likopen dan vitamin C. Tanaman ini bisa tumbuh subur di pot maupun lahan terbuka, namun membutuhkan penyangga karena batangnya mudah roboh saat berbuah lebat.',
+      ciri:['Batang lunak namun bisa tumbuh memanjang hingga 1-2 meter','Daun bergerigi dengan aroma khas','Bunga kecil berwarna kuning sebelum menjadi buah','Buah berubah warna dari hijau ke oranye kemudian merah saat matang'],
+      manfaat:['Sumber vitamin C, kalium, dan antioksidan likopen','Bisa diolah menjadi berbagai masakan maupun dikonsumsi langsung','Media belajar yang baik untuk memahami proses penyerbukan dan pembuahan','Nilai ekonomis tinggi jika ditanam dalam skala lebih besar']
+    },
+    panduan:{
+      persiapan:['Biji atau bibit tomat','Media tanam subur dan gembur','Pot besar atau polybag ukuran 30-40 cm','Ajir atau turus bambu untuk penyangga'],
+      langkah:['Semai biji tomat di media semai hingga tumbuh 4 daun sejati','Pindahkan bibit ke pot atau polybag yang lebih besar','Pasang ajir bambu di sisi tanaman sebagai penyangga','Siram rutin setiap pagi, jaga media tetap lembap tapi tidak becek','Ikat batang utama ke ajir secara berkala seiring pertumbuhan'],
+      tips:['Pangkas tunas air (tunas yang tumbuh di ketiak daun) agar energi tanaman fokus ke buah','Beri pupuk kaya kalium saat memasuki masa pembuahan','Perhatikan tanda hama seperti kutu daun dan segera atasi','Panen saat buah sudah berwarna merah merata namun masih agak keras']
+    }
+  },
+  {
+    id:'jeruk-nipis', name:'Jeruk Nipis', latin:'Citrus aurantiifolia', category:'buah',
+    emoji:'🍋', difficulty:3, water:'3-4x/minggu', light:'Matahari penuh', duration:'1-2 tahun',
+    bacaan:{
+      deskripsi:'Jeruk nipis adalah tanaman buah yang cocok ditanam dalam pot atau dikenal dengan istilah tabulampot (tanaman buah dalam pot). Meski butuh waktu lebih lama untuk berbuah, hasilnya sangat bermanfaat untuk kebutuhan dapur maupun kesehatan.',
+      ciri:['Berupa pohon kecil hingga sedang dengan cabang berduri','Daun hijau mengilap dengan aroma khas jeruk','Bunga putih kecil yang harum sebelum menjadi buah','Buah bulat kecil berwarna hijau dengan rasa asam segar'],
+      manfaat:['Kaya vitamin C dan sering digunakan sebagai bumbu dapur','Air perasannya bermanfaat untuk kesehatan dan kecantikan','Tabulampot cocok untuk lahan terbatas seperti teras rumah','Bisa dipanen berkali-kali sepanjang tahun setelah berbuah']
+    },
+    panduan:{
+      persiapan:['Bibit hasil cangkok atau okulasi (lebih cepat berbuah dibanding biji)','Pot besar berdiameter minimal 40-50 cm','Media tanam campuran tanah, kompos, dan sekam bakar','Pupuk kandang dan pupuk NPK'],
+      langkah:['Siapkan media tanam gembur dan kaya nutrisi di dalam pot besar','Tanam bibit cangkok dengan posisi tegak, padatkan media di sekelilingnya','Siram hingga media lembap merata setelah tanam','Letakkan pot di area yang terkena sinar matahari penuh sepanjang hari','Lakukan pemupukan rutin setiap 1-2 bulan sekali'],
+      tips:['Pangkas cabang yang tumbuh tidak beraturan agar bentuk pohon rapi dan produktif','Siram secara teratur namun pastikan drainase pot baik agar tidak tergenang','Berikan pupuk kaya fosfor dan kalium untuk merangsang pembungaan','Lindungi dari hama seperti kutu putih dan ulat daun']
+    }
+  },
+  {
+    id:'mint', name:'Mint', latin:'Mentha sp.', category:'herbal',
+    emoji:'🌱', difficulty:1, water:'Setiap hari', light:'Teduh - Terang', duration:'30-40 hari',
+    bacaan:{
+      deskripsi:'Daun mint adalah tanaman herbal yang tumbuh cepat dan menjalar. Aromanya yang segar membuatnya sering dipakai untuk campuran minuman, teh, hingga masakan. Perawatannya tergolong mudah asal media tanam selalu lembap.',
+      ciri:['Daun kecil bergerigi dengan aroma menyegarkan','Batang menjalar dan mudah berakar di setiap ruas','Tumbuh dengan cepat dan bisa menutupi permukaan pot','Menyukai kondisi media tanam yang lembap'],
+      manfaat:['Bisa digunakan sebagai campuran teh, infused water, dan masakan','Aromanya dipercaya membantu menenangkan pikiran','Mudah diperbanyak hanya dengan stek batang','Bisa dipanen berulang kali tanpa perlu menanam ulang']
+    },
+    panduan:{
+      persiapan:['Stek batang mint sepanjang 10-15 cm','Pot atau wadah dengan media tanam gembur','Media tanam campuran tanah dan kompos'],
+      langkah:['Potong batang mint yang sehat sepanjang 10-15 cm, sisakan beberapa daun di ujung','Tanam stek pada media tanam yang sudah disiapkan hingga 2-3 ruas tertanam','Siram secukupnya agar media lembap','Letakkan di tempat teduh selama beberapa hari pertama hingga akar tumbuh','Pindahkan ke lokasi dengan cahaya terang tidak langsung setelah tanaman mulai segar'],
+      tips:['Jaga media tanam agar selalu lembap, mint tidak menyukai kondisi kering','Petik daun secara rutin agar tanaman tumbuh makin rimbun','Pangkas batang yang tumbuh terlalu panjang agar tidak kurus dan berkayu','Hindari sinar matahari terik sepanjang hari karena bisa membuat daun layu']
+    }
+  },
+  {
+    id:'lidah-buaya', name:'Lidah Buaya', latin:'Aloe vera', category:'herbal',
+    emoji:'🪴', difficulty:1, water:'1-2x/minggu', light:'Terang', duration:'Tahunan',
+    bacaan:{
+      deskripsi:'Lidah buaya atau aloe vera adalah tanaman sukulen yang gel di dalam daunnya banyak dimanfaatkan untuk perawatan kulit dan pengobatan luka ringan. Tanaman ini sangat tahan kekeringan dan mudah diperbanyak.',
+      ciri:['Daun tebal berdaging dengan gel bening di dalamnya','Tepi daun bergerigi kecil menyerupai duri lunak','Tumbuh membentuk rumpun dengan banyak anakan','Sangat tahan terhadap kondisi kering'],
+      manfaat:['Gelnya bermanfaat untuk merawat kulit dan menenangkan luka bakar ringan','Bisa digunakan sebagai bahan alami perawatan rambut','Perawatan sangat mudah, cocok untuk pemula','Anakannya bisa dipisah untuk diperbanyak menjadi tanaman baru']
+    },
+    panduan:{
+      persiapan:['Anakan (offset) lidah buaya dari indukan yang sehat','Pot berlubang drainase','Media tanam porous (campuran tanah dan pasir)'],
+      langkah:['Pisahkan anakan lidah buaya dari indukan beserta sedikit akarnya','Diamkan anakan di tempat teduh selama 1-2 hari agar luka bekas potongan mengering','Siapkan media tanam porous di dalam pot','Tanam anakan dengan posisi tegak, padatkan media di sekitarnya','Siram secukupnya setelah tanam, lalu biarkan media mengering sebelum disiram lagi'],
+      tips:['Siram hanya ketika media benar-benar kering untuk mencegah akar busuk','Letakkan di tempat dengan cahaya terang namun tidak terik sepanjang hari','Pisahkan anakan yang sudah besar agar rumpun tidak terlalu padat','Gunakan media tanam yang porous agar air tidak menggenang']
+    }
+  }
+];
+
+const quizQuestions = [
+  {question:'Tanaman hias apa yang terkenal ampuh menyaring udara dan sangat cocok untuk pemula?', options:['Lidah Mertua','Jeruk Nipis','Cabai Rawit','Tomat'], correct:0, explanation:'Lidah Mertua dikenal sebagai tanaman penyaring udara alami yang sangat mudah dirawat.'},
+  {question:'Berapa lama waktu yang dibutuhkan bayam sejak tanam hingga siap panen?', options:['25-30 hari','70-90 hari','3-4 bulan','6 bulan'], correct:0, explanation:'Bayam adalah sayuran cepat panen, cocok untuk belajar menanam bagi pemula.'},
+  {question:'Mengapa pot tanaman sebaiknya memiliki lubang drainase?', options:['Agar pot terlihat lebih menarik','Mencegah air menggenang dan akar membusuk','Membuat tanaman cepat berbunga','Mengurangi berat pot'], correct:1, explanation:'Lubang drainase penting agar akar tidak terendam air terlalu lama.'},
+  {question:'Kaktus sebaiknya disiram dengan frekuensi...', options:['Setiap hari','2 kali sehari','2-3 minggu sekali','Tidak perlu disiram sama sekali'], correct:2, explanation:'Kaktus menyimpan cadangan air di batangnya sehingga tidak perlu sering disiram.'},
+  {question:'Apa itu tabulampot yang biasa diterapkan pada tanaman seperti jeruk nipis?', options:['Jenis pupuk organik','Tanaman buah dalam pot','Teknik pemangkasan daun','Hama pada tanaman jeruk'], correct:1, explanation:'Tabulampot artinya tanaman buah dalam pot, cocok untuk lahan terbatas.'},
+  {question:'Kenapa batang tomat perlu dipasangi ajir atau turus penyangga?', options:['Agar cepat berbunga','Menopang batang agar tidak roboh saat berbuah','Mengusir hama','Mempercepat rasa manis pada buah'], correct:1, explanation:'Ajir membantu menopang batang tomat yang lemas saat buahnya mulai lebat.'},
+  {question:'Media tanam yang ideal untuk kaktus adalah campuran tanah dengan...', options:['Pasir agar porous','Tanah liat','Pupuk kandang saja','Air kolam'], correct:0, explanation:'Pasir membuat media tanam lebih porous sehingga air tidak menggenang.'},
+  {question:'Apa manfaat utama gel dari daun lidah buaya?', options:['Pewarna alami makanan','Perawatan kulit dan luka ringan','Pengusir serangga','Pemanis minuman'], correct:1, explanation:'Gel lidah buaya dikenal luas untuk merawat kulit dan meredakan luka ringan.'}
+];
+
+const arrangeSets = [
+  {plantName:'Lidah Mertua', steps:['Siapkan pot berlubang dan media tanam','Tanam anakan di tengah pot','Siram secukupnya','Letakkan di tempat teduh dulu','Pindah ke cahaya terang setelah 1-2 minggu']},
+  {plantName:'Cabai Rawit', steps:['Rendam biji semalaman','Semai biji di media tanam','Pindah tanam setelah berdaun 4-5','Siram rutin pagi dan sore','Panen saat buah merah merata']},
+  {plantName:'Bayam', steps:['Gemburkan media tanam','Tabur benih secara merata','Tutup tipis dengan tanah','Siram dengan gerimis halus','Panen dalam 25-30 hari']},
+  {plantName:'Tomat', steps:['Semai biji hingga berdaun 4','Pindah ke pot yang lebih besar','Pasang ajir penyangga','Pangkas tunas air','Panen saat buah merah merata']},
+  {plantName:'Mint', steps:['Potong batang sehat 10-15 cm','Tanam stek di media lembap','Simpan di tempat teduh dulu','Jaga media tetap lembap','Petik daun secara rutin']}
+];
+
+const dailyTips = [
+  'Siram tanaman di pagi hari agar air terserap maksimal sebelum matahari terik.',
+  'Bersihkan debu di permukaan daun secara berkala agar fotosintesis berjalan optimal.',
+  'Daun yang menguning bisa jadi tanda kelebihan air, bukan hanya kekurangan air.',
+  'Putar posisi pot secara berkala agar tanaman tumbuh merata ke segala arah.',
+  'Air bekas cucian beras bisa dimanfaatkan sebagai pupuk alami untuk tanaman hias.',
+  'Pot dengan lubang drainase membantu mencegah akar tanaman membusuk.'
+];
+
+/* ============ STATE (in-memory, tidak pakai localStorage) ============ */
+const state = {
+  selectedPlantId: null,
+  favorites: new Set(),
+  totalScore: 0,
+  plantsLearned: new Set(),
+  activeCategory: 'semua',
+  searchQuery: '',
+  quiz: {index:0, score:0, answered:false, questions:[], currentOptions:[]},
+  arrange: {correct:[], plantName:'', pool:[], sequence:[]},
+  memory: {cards:[], flippedIndices:[], matches:0, moves:0, locked:false}
+};
+let lastGameReplay = null;
+
+/* ============ UTILS ============ */
+function shuffle(arr){
+  const a = [...arr];
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+function categoryLabel(catId){
+  const found = categories.find(c=>c.id===catId);
+  return found ? found.label : catId;
+}
+function renderDifficulty(level){
+  const labels = ['','Mudah','Sedang','Sulit'];
+  let dots = '';
+  for(let i=1;i<=3;i++){
+    dots += `<span class="diff-dot ${i<=level?'filled':''}"></span>`;
+  }
+  return `<span class="diff-dots">${dots}</span><span class="diff-label">${labels[level]}</span>`;
+}
+let toastTimeout;
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimeout);
+  toastTimeout = setTimeout(()=> t.classList.remove('show'), 2600);
+}
+function updateStatsDisplays(){
+  document.querySelectorAll('.stat-score-display').forEach(el=> el.textContent = state.totalScore);
+  document.querySelectorAll('.stat-learned-display').forEach(el=> el.textContent = state.plantsLearned.size);
+}
+
+/* ============ NAVIGATION ============ */
+const NAV_SCREENS = ['home','game-hub','about'];
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=> s.classList.remove('active'));
+  document.getElementById('screen-'+id).classList.add('active');
+  const nav = document.getElementById('bottom-nav');
+  if(NAV_SCREENS.includes(id)){
+    nav.style.display = 'flex';
+    document.querySelectorAll('.nav-item').forEach(n=> n.classList.toggle('active', n.dataset.screen===id));
+  } else {
+    nav.style.display = 'none';
+  }
+  document.getElementById('screen-container').scrollTop = 0;
+}
+
+/* ============ SPLASH ============ */
+function animateSplashProgress(){
+  const fill = document.getElementById('splash-progress-fill');
+  let pct = 0;
+  const timer = setInterval(()=>{
+    pct += 100/30;
+    if(pct>=100){ pct=100; clearInterval(timer); }
+    fill.style.width = pct+'%';
+  }, 80);
+}
+function updateStatusTime(){
+  const now = new Date();
+  const h = now.getHours().toString().padStart(2,'0');
+  const m = now.getMinutes().toString().padStart(2,'0');
+  document.getElementById('status-time').textContent = `${h}:${m}`;
+}
+
+/* ============ HOME ============ */
+function renderCategoryChips(){
+  const wrap = document.getElementById('category-chips');
+  wrap.innerHTML = categories.map(c=>
+    `<button class="category-chip ${c.id==='semua'?'active':''}" data-cat="${c.id}" onclick="selectCategory('${c.id}')">${c.icon} ${c.label}</button>`
+  ).join('');
+}
+function selectCategory(catId){
+  state.activeCategory = catId;
+  document.querySelectorAll('.category-chip').forEach(c=> c.classList.toggle('active', c.dataset.cat===catId));
+  renderPlantGrid();
+}
+function getFilteredPlants(){
+  return plants.filter(p=>{
+    const matchCat = state.activeCategory==='semua' || p.category===state.activeCategory;
+    const matchSearch = p.name.toLowerCase().includes(state.searchQuery.toLowerCase());
+    return matchCat && matchSearch;
+  });
+}
+function renderPlantGrid(){
+  const grid = document.getElementById('plant-grid');
+  const filtered = getFilteredPlants();
+  if(filtered.length===0){
+    grid.innerHTML = '<p class="empty-state">Tanaman tidak ditemukan 🔍</p>';
+    return;
+  }
+  grid.innerHTML = filtered.map(p=>`
+    <div class="plant-card" onclick="openDetail('${p.id}')">
+      <div class="plant-card-image cat-${p.category}"><div class="plant-blob"><span>${p.emoji}</span></div></div>
+      <div class="plant-card-body">
+        <h4>${p.name}</h4>
+        <p class="plant-card-cat">${categoryLabel(p.category)}</p>
+        ${renderDifficulty(p.difficulty)}
+      </div>
+    </div>
+  `).join('');
+}
+function renderTipOfDay(){
+  const tip = dailyTips[new Date().getDate() % dailyTips.length];
+  document.getElementById('tip-of-day-text').textContent = tip;
+}
+
+/* ============ DETAIL ============ */
+function openDetail(plantId){
+  const plant = plants.find(p=>p.id===plantId);
+  if(!plant) return;
+  state.selectedPlantId = plantId;
+  document.getElementById('detail-emoji').textContent = plant.emoji;
+  document.getElementById('detail-name').textContent = plant.name;
+  document.getElementById('detail-latin').textContent = plant.latin;
+  document.getElementById('detail-category-badge').textContent = categoryLabel(plant.category);
+  document.getElementById('detail-difficulty').innerHTML = renderDifficulty(plant.difficulty);
+  document.getElementById('detail-water').textContent = plant.water;
+  document.getElementById('detail-light').textContent = plant.light;
+  document.getElementById('detail-duration').textContent = plant.duration;
+  renderBacaan(plant);
+  renderPanduan(plant);
+  switchDetailTab('bacaan', true);
+  updateFavoriteIcon();
+  showScreen('detail');
+}
+function renderBacaan(plant){
+  document.getElementById('bacaan-deskripsi').textContent = plant.bacaan.deskripsi;
+  document.getElementById('bacaan-ciri').innerHTML = plant.bacaan.ciri.map(c=>`<li>${c}</li>`).join('');
+  document.getElementById('bacaan-manfaat').innerHTML = plant.bacaan.manfaat.map(m=>`<li>${m}</li>`).join('');
+}
+function renderPanduan(plant){
+  document.getElementById('panduan-persiapan').innerHTML = plant.panduan.persiapan.map(x=>`<li>${x}</li>`).join('');
+  document.getElementById('panduan-langkah').innerHTML = plant.panduan.langkah.map((x,i)=>`<li><span class="step-num">${i+1}</span><span class="step-text">${x}</span></li>`).join('');
+  document.getElementById('panduan-tips').innerHTML = plant.panduan.tips.map(x=>`<li>${x}</li>`).join('');
+}
+function switchDetailTab(tab, skipLearn){
+  document.getElementById('tab-bacaan').classList.toggle('active', tab==='bacaan');
+  document.getElementById('tab-panduan').classList.toggle('active', tab==='panduan');
+  document.getElementById('content-bacaan').classList.toggle('active', tab==='bacaan');
+  document.getElementById('content-panduan').classList.toggle('active', tab==='panduan');
+  if(tab==='panduan' && !skipLearn){
+    markPlantLearned(state.selectedPlantId);
+  }
+}
+function markPlantLearned(plantId){
+  if(!plantId || state.plantsLearned.has(plantId)) return;
+  state.plantsLearned.add(plantId);
+  state.totalScore += 10;
+  const plant = plants.find(p=>p.id===plantId);
+  showToast(`🎉 +10 poin! Kamu belajar ${plant.name}`);
+  updateStatsDisplays();
+}
+function toggleFavorite(plantId){
+  if(!plantId) return;
+  if(state.favorites.has(plantId)) state.favorites.delete(plantId);
+  else state.favorites.add(plantId);
+  updateFavoriteIcon();
+}
+function updateFavoriteIcon(){
+  const btn = document.getElementById('btn-favorite');
+  btn.textContent = state.favorites.has(state.selectedPlantId) ? '❤️' : '🤍';
+}
+
+/* ============ GAME: QUIZ ============ */
+function startQuiz(){
+  state.quiz = {index:0, score:0, answered:false, questions:shuffle(quizQuestions), currentOptions:[]};
+  showScreen('quiz');
+  renderQuizQuestion();
+}
+function renderQuizQuestion(){
+  state.quiz.answered = false;
+  const q = state.quiz.questions[state.quiz.index];
+  document.getElementById('quiz-counter').textContent = `Soal ${state.quiz.index+1}/${state.quiz.questions.length}`;
+  document.getElementById('quiz-progress-fill').style.width = `${((state.quiz.index+1)/state.quiz.questions.length)*100}%`;
+  document.getElementById('quiz-question-text').textContent = q.question;
+  const shuffledOptions = shuffle(q.options.map((opt,i)=>({text:opt, isCorrect:i===q.correct})));
+  state.quiz.currentOptions = shuffledOptions;
+  document.getElementById('quiz-options').innerHTML = shuffledOptions.map((opt,i)=>
+    `<button class="quiz-option" onclick="answerQuiz(${i},${opt.isCorrect})">${opt.text}</button>`
+  ).join('');
+  const fb = document.getElementById('quiz-feedback');
+  fb.classList.remove('show');
+  fb.textContent = '';
+  document.getElementById('quiz-next-btn').style.display = 'none';
+}
+function answerQuiz(selectedIdx, isCorrect){
+  if(state.quiz.answered) return;
+  state.quiz.answered = true;
+  const q = state.quiz.questions[state.quiz.index];
+  document.querySelectorAll('#quiz-options .quiz-option').forEach((btn,i)=>{
+    btn.classList.add('disabled');
+    if(state.quiz.currentOptions[i].isCorrect) btn.classList.add('correct');
+    else if(i===selectedIdx) btn.classList.add('incorrect');
+  });
+  const fb = document.getElementById('quiz-feedback');
+  fb.textContent = q.explanation;
+  fb.classList.add('show');
+  if(isCorrect){ state.quiz.score += 10; state.totalScore += 10; updateStatsDisplays(); }
+  document.getElementById('quiz-next-btn').style.display = 'block';
+}
+function nextQuizQuestion(){
+  state.quiz.index++;
+  if(state.quiz.index >= state.quiz.questions.length) finishQuiz();
+  else renderQuizQuestion();
+}
+function finishQuiz(){
+  const total = state.quiz.questions.length;
+  const correct = state.quiz.score/10;
+  let emoji='🌟', title='Hebat!';
+  if(correct===total){ emoji='🏆'; title='Sempurna!'; }
+  else if(correct>=total*0.6){ emoji='🌿'; title='Bagus Sekali!'; }
+  else { emoji='🌱'; title='Terus Belajar!'; }
+  showGameResult({
+    emoji, title,
+    desc:`Kamu menjawab benar ${correct} dari ${total} soal`,
+    scoreText:`+${state.quiz.score} Poin`,
+    replayFn: startQuiz
+  });
+}
+
+/* ============ GAME: SUSUN LANGKAH ============ */
+function startArrange(){
+  const set = arrangeSets[Math.floor(Math.random()*arrangeSets.length)];
+  state.arrange = {
+    correct: set.steps,
+    plantName: set.plantName,
+    pool: shuffle(set.steps.map((s,i)=>({id:i, text:s}))),
+    sequence: []
+  };
+  document.getElementById('arrange-plant-name').textContent = set.plantName;
+  showScreen('arrange');
+  renderArrange();
+}
+function renderArrange(){
+  const seqEl = document.getElementById('arrange-sequence');
+  const poolEl = document.getElementById('arrange-pool');
+  seqEl.innerHTML = state.arrange.sequence.length
+    ? state.arrange.sequence.map((s,idx)=>`<div class="arrange-chip seq-chip" onclick="unselectStep(${idx})"><span class="chip-num">${idx+1}</span>${s.text}</div>`).join('')
+    : '<p class="arrange-placeholder">Ketuk langkah di bawah untuk menyusun urutan</p>';
+  poolEl.innerHTML = state.arrange.pool.map(s=>`<div class="arrange-chip" onclick="selectStep(${s.id})">${s.text}</div>`).join('');
+}
+function selectStep(id){
+  const idx = state.arrange.pool.findIndex(s=>s.id===id);
+  if(idx===-1) return;
+  const [item] = state.arrange.pool.splice(idx,1);
+  state.arrange.sequence.push(item);
+  renderArrange();
+}
+function unselectStep(seqIdx){
+  const [item] = state.arrange.sequence.splice(seqIdx,1);
+  state.arrange.pool.push(item);
+  renderArrange();
+}
+function resetArrange(){
+  state.arrange.pool = shuffle([...state.arrange.pool, ...state.arrange.sequence]);
+  state.arrange.sequence = [];
+  renderArrange();
+}
+function checkArrange(){
+  if(state.arrange.sequence.length !== state.arrange.correct.length){
+    showToast('Susun semua langkah dulu ya!');
+    return;
+  }
+  const userOrder = state.arrange.sequence.map(s=>s.text);
+  const isCorrect = userOrder.every((t,i)=> t===state.arrange.correct[i]);
+  if(isCorrect){
+    state.totalScore += 15;
+    updateStatsDisplays();
+    showGameResult({
+      emoji:'🎉', title:'Urutan Tepat!',
+      desc:`Kamu berhasil menyusun langkah menanam ${state.arrange.plantName} dengan benar`,
+      scoreText:'+15 Poin',
+      replayFn: startArrange
+    });
+  } else {
+    const seqEl = document.getElementById('arrange-sequence');
+    seqEl.classList.add('shake');
+    setTimeout(()=> seqEl.classList.remove('shake'), 500);
+    showToast('Urutan belum tepat, coba lagi ya! 🌱');
+  }
+}
+
+/* ============ GAME: MEMORY ============ */
+function startMemory(){
+  const emojis = plants.map(p=>p.emoji);
+  const deck = shuffle([...emojis, ...emojis]).map((val,i)=>({id:i, value:val, flipped:false, matched:false}));
+  state.memory = {cards:deck, flippedIndices:[], matches:0, moves:0, locked:false};
+  showScreen('memory');
+  renderMemoryGrid();
+}
+function renderMemoryGrid(){
+  const grid = document.getElementById('memory-grid');
+  grid.innerHTML = state.memory.cards.map((c,i)=>`
+    <div class="memory-card" id="mem-card-${i}" onclick="flipMemoryCard(${i})">
+      <div class="memory-card-inner">
+        <div class="memory-card-front">🌱</div>
+        <div class="memory-card-back">${c.value}</div>
+      </div>
+    </div>
+  `).join('');
+  updateMemoryStats();
+}
+function updateMemoryStats(){
+  document.getElementById('memory-moves').textContent = state.memory.moves;
+  document.getElementById('memory-matches').textContent = state.memory.matches;
+}
+function flipMemoryCard(index){
+  const m = state.memory;
+  if(m.locked) return;
+  const card = m.cards[index];
+  if(card.flipped || card.matched) return;
+  card.flipped = true;
+  document.getElementById('mem-card-'+index).classList.add('flipped');
+  m.flippedIndices.push(index);
+  if(m.flippedIndices.length===2){
+    m.moves++;
+    updateMemoryStats();
+    m.locked = true;
+    const [i1,i2] = m.flippedIndices;
+    if(m.cards[i1].value === m.cards[i2].value){
+      m.cards[i1].matched = true;
+      m.cards[i2].matched = true;
+      document.getElementById('mem-card-'+i1).classList.add('matched');
+      document.getElementById('mem-card-'+i2).classList.add('matched');
+      m.matches++;
+      m.flippedIndices = [];
+      m.locked = false;
+      updateMemoryStats();
+      if(m.matches === plants.length){
+        setTimeout(showMemoryWin, 500);
+      }
+    } else {
+      setTimeout(()=>{
+        m.cards[i1].flipped = false;
+        m.cards[i2].flipped = false;
+        document.getElementById('mem-card-'+i1).classList.remove('flipped');
+        document.getElementById('mem-card-'+i2).classList.remove('flipped');
+        m.flippedIndices = [];
+        m.locked = false;
+      }, 900);
+    }
+  }
+}
+function showMemoryWin(){
+  const points = Math.max(50 - state.memory.moves*2, 10);
+  state.totalScore += points;
+  updateStatsDisplays();
+  showGameResult({
+    emoji:'🧩', title:'Semua Cocok!',
+    desc:`Kamu menyelesaikan permainan dalam ${state.memory.moves} langkah`,
+    scoreText:`+${points} Poin`,
+    replayFn: startMemory
+  });
+}
+
+/* ============ SHARED RESULT ============ */
+function showGameResult({emoji, title, desc, scoreText, replayFn}){
+  document.getElementById('result-emoji').textContent = emoji;
+  document.getElementById('result-title').textContent = title;
+  document.getElementById('result-desc').textContent = desc;
+  document.getElementById('result-score-display').textContent = scoreText;
+  lastGameReplay = replayFn;
+  showScreen('game-result');
+}
+function replayLastGame(){
+  if(lastGameReplay) lastGameReplay();
+}
+
+/* ============ INIT ============ */
+document.addEventListener('DOMContentLoaded', ()=>{
+  renderCategoryChips();
+  renderPlantGrid();
+  renderTipOfDay();
+  updateStatsDisplays();
+  updateStatusTime();
+  setInterval(updateStatusTime, 30000);
+  document.getElementById('search-input').addEventListener('input', (e)=>{
+    state.searchQuery = e.target.value;
+    renderPlantGrid();
+  });
+  animateSplashProgress();
+  setTimeout(()=> showScreen('home'), 2400);
+});
+</script>
+</body>
+</html>
